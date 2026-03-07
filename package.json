@@ -1,0 +1,21 @@
+{
+  "name": "options-bot",
+  "version": "1.0.0",
+  "description": "Stock trading app with Alpaca API — market data, history, and backtesting",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "keywords": ["alpaca", "trading", "stocks", "backtest", "market-data"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "cors": "^2.8.5"
+  }
+}
