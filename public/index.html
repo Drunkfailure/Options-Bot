@@ -11,152 +11,122 @@
 </head>
 <body>
   <div class="app">
-    <header class="header">
-      <h1 class="logo">Options Bot</h1>
-      <p class="tagline">Alpaca market data &amp; history</p>
+    <header class="topbar">
+      <a href="#/" class="logo">Options Bot</a>
+      <div class="search-wrap">
+        <input type="text" id="searchInput" class="search-input" placeholder="Search ticker (e.g. SPY, AAPL)…" autocomplete="off" />
+        <button type="button" id="searchBtn" class="search-btn" aria-label="Search">Go</button>
+      </div>
       <div class="connection" id="connection">
-        <span class="status-dot" id="statusDot"></span>
+        <span class="status-dot"></span>
         <span class="status-text" id="statusText">Checking…</span>
       </div>
     </header>
 
     <main class="main">
-      <!-- Dashboard: account, growth chart, recent trades -->
-      <section class="card dashboard">
-        <h2>Account</h2>
-        <div class="dashboard-grid">
-          <div class="account-summary" id="accountSummary">
+      <!-- Home: portfolio only -->
+      <div id="view-home" class="view">
+        <section class="card dashboard">
+          <h2>Account</h2>
+          <div class="dashboard-grid">
+            <div class="account-summary" id="accountSummary">
+              <p class="muted">Loading…</p>
+            </div>
+            <div class="equity-chart-wrap">
+              <h3 class="chart-title">Portfolio value</h3>
+              <div class="equity-chart" id="equityChart">
+                <p class="muted">Loading…</p>
+              </div>
+              <div class="chart-period" id="chartPeriod">
+                <button type="button" data-period="1W">1W</button>
+                <button type="button" data-period="1M" class="active">1M</button>
+                <button type="button" data-period="3M">3M</button>
+                <button type="button" data-period="1A">1Y</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Active holdings</h2>
+          <p class="muted">Current positions.</p>
+          <div class="output table-wrap" id="positionsOutput">
             <p class="muted">Loading…</p>
           </div>
-          <div class="equity-chart-wrap">
-            <h3 class="chart-title">Portfolio value</h3>
-            <div class="equity-chart" id="equityChart">
-              <p class="muted">Load portfolio history to see growth.</p>
-            </div>
-            <div class="chart-period" id="chartPeriod">
-              <button type="button" data-period="1W">1W</button>
-              <button type="button" data-period="1M" class="active">1M</button>
-              <button type="button" data-period="3M">3M</button>
-              <button type="button" data-period="1A">1Y</button>
-            </div>
-          </div>
-        </div>
-        <h3 class="recent-trades-title">Recent trades</h3>
-        <div class="output table-wrap" id="recentTrades">
-          <p class="muted">Loading…</p>
-        </div>
-      </section>
+        </section>
 
-      <section class="card">
-        <h2>Market data (live)</h2>
-        <p class="muted">Latest quote &amp; trade — real-time data.</p>
-        <div class="form-row">
-          <label for="liveSymbol">Symbol</label>
-          <input type="text" id="liveSymbol" value="SPY" placeholder="e.g. SPY, AAPL" />
-          <button type="button" id="btnQuote">Get quote</button>
-          <button type="button" id="btnTrade">Get latest trade</button>
-        </div>
-        <div class="output" id="liveOutput"></div>
-      </section>
-
-      <section class="card">
-        <h2>Historical bars</h2>
-        <p class="muted">OHLCV bars for backtesting and analysis.</p>
-        <div class="form-grid">
-          <div class="field">
-            <label for="barSymbols">Symbols</label>
-            <input type="text" id="barSymbols" value="SPY" placeholder="SPY, AAPL, TSLA" />
+        <section class="card">
+          <h2>Active trades</h2>
+          <p class="muted">Open and pending orders.</p>
+          <div class="output table-wrap" id="activeTradesOutput">
+            <p class="muted">Loading…</p>
           </div>
-          <div class="field">
-            <label for="timeframe">Timeframe</label>
-            <select id="timeframe">
-              <option value="1Min">1 min</option>
-              <option value="5Min">5 min</option>
-              <option value="15Min">15 min</option>
-              <option value="1Hour">1 hour</option>
+        </section>
+
+        <section class="card">
+          <h2>Previous trades</h2>
+          <p class="muted">Filled, canceled, and expired orders.</p>
+          <div class="output table-wrap" id="previousTradesOutput">
+            <p class="muted">Loading…</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- Ticker: symbol detail -->
+      <div id="view-ticker" class="view hidden">
+        <div class="ticker-header">
+          <a href="#/" class="back-link">← Portfolio</a>
+          <h1 class="ticker-symbol" id="tickerSymbol">—</h1>
+        </div>
+
+        <!-- Price chart first -->
+        <section class="card ticker-chart-card">
+          <h2>Price</h2>
+          <p class="muted">Historical bars (IEX). Choose timeframe and fetch to load.</p>
+          <div class="form-row form-row-inline">
+            <select id="tickerTimeframe">
               <option value="1Day" selected>1 day</option>
               <option value="1Week">1 week</option>
+              <option value="5Min">5 min</option>
             </select>
+            <button type="button" id="tickerBarsRefresh">Update chart</button>
           </div>
-          <div class="field">
-            <label for="start">Start</label>
-            <input type="date" id="start" />
+          <div class="bars-chart-wrap ticker-chart-wrap" id="tickerBarsChartWrap">
+            <p class="no-chart">Chart will appear after you click Update chart.</p>
           </div>
-          <div class="field">
-            <label for="end">End</label>
-            <input type="date" id="end" />
-          </div>
-        </div>
-        <div class="form-row">
-          <button type="button" id="btnBars">Fetch bars</button>
-        </div>
-        <div class="bars-chart-wrap" id="barsChartWrap">
-          <p class="no-chart">Chart will appear here when you fetch bars.</p>
-        </div>
-        <div class="output table-wrap" id="barsOutput"></div>
-      </section>
+          <div class="output table-wrap ticker-bars-table" id="tickerBarsOutput"></div>
+        </section>
 
-      <section class="card">
-        <h2>Options</h2>
-        <p class="muted">Option chain (current snapshots) and historical option bars for backtesting. Same historical-bars idea as stocks.</p>
-        <div class="options-grid">
-          <div class="options-block">
-            <h3 class="subsection-title">Option chain</h3>
-            <p class="muted small">Latest quote, trade, and Greeks by contract for an underlying.</p>
-            <div class="form-row">
-              <div class="field">
-                <label for="optUnderlying">Underlying</label>
-                <input type="text" id="optUnderlying" value="SPY" placeholder="SPY" />
-              </div>
-              <div class="field">
-                <label for="optType">Type</label>
-                <select id="optType">
-                  <option value="">All</option>
-                  <option value="call">Call</option>
-                  <option value="put">Put</option>
-                </select>
-              </div>
-              <button type="button" id="btnOptionChain">Fetch chain</button>
-            </div>
-            <div class="output table-wrap" id="optionChainOutput"></div>
+        <section class="card ticker-price-card">
+          <h2>Current price</h2>
+          <div id="tickerPriceOutput" class="ticker-price-wrap">
+            <p class="muted">Loading…</p>
           </div>
-          <div class="options-block">
-            <h3 class="subsection-title">Historical option bars</h3>
-            <p class="muted small">OHLCV bars for option contracts (OCC symbols). Use for backtesting options strategies.</p>
-            <div class="form-grid">
-              <div class="field">
-                <label for="optBarSymbols">Option symbols (OCC)</label>
-                <input type="text" id="optBarSymbols" placeholder="AAPL240419C00150000,AAPL240419P00140000" />
-              </div>
-              <div class="field">
-                <label for="optBarTimeframe">Timeframe</label>
-                <select id="optBarTimeframe">
-                  <option value="1Min">1 min</option>
-                  <option value="1Day" selected>1 day</option>
-                  <option value="1Week">1 week</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="optBarStart">Start</label>
-                <input type="date" id="optBarStart" />
-              </div>
-              <div class="field">
-                <label for="optBarEnd">End</label>
-                <input type="date" id="optBarEnd" />
-              </div>
-            </div>
-            <div class="form-row">
-              <button type="button" id="btnOptionBars">Fetch option bars</button>
-            </div>
-            <div class="output table-wrap" id="optionBarsOutput"></div>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section class="card card-muted">
-        <h2>Backtest</h2>
-        <p class="muted">Run strategies on historical data (stock bars and option bars above). (Coming soon.)</p>
-      </section>
+        <!-- Options: Calls | Puts -->
+        <section class="card options-card">
+          <h2>Options</h2>
+          <p class="muted">Option chain. Refreshes for current underlying.</p>
+          <div class="form-row form-row-inline">
+            <button type="button" id="tickerOptRefresh">Refresh chain</button>
+          </div>
+          <div class="options-chain">
+            <div class="options-panel">
+              <h3 class="options-panel-title calls-title">Calls</h3>
+              <div class="output table-wrap" id="tickerCallsOutput">
+                <p class="muted">Loading…</p>
+              </div>
+            </div>
+            <div class="options-panel">
+              <h3 class="options-panel-title puts-title">Puts</h3>
+              <div class="output table-wrap" id="tickerPutsOutput">
+                <p class="muted">Loading…</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
 
     <footer class="footer">

@@ -13,6 +13,8 @@ const ALPACA_KEY = process.env.ALPACA_API_KEY_ID;
 const ALPACA_SECRET = process.env.ALPACA_SECRET_KEY;
 const DATA_BASE = (process.env.ALPACA_DATA_BASE_URL || "https://data.sandbox.alpaca.markets").replace(/\/$/, "");
 const TRADING_BASE = (process.env.ALPACA_TRADING_BASE_URL || "https://paper-api.alpaca.markets").replace(/\/$/, "");
+// IEX is the only feed that works without a subscription (Alpaca docs)
+const STOCK_FEED = process.env.ALPACA_STOCK_FEED || "iex";
 
 app.use(cors());
 app.use(express.json());
@@ -22,7 +24,7 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 app.get("/api/status", async (req, res) => {
   const [accountOk, dataOk] = await Promise.all([
     alpacaTradingProxy(`${TRADING_BASE}/v2/account`, ALPACA_KEY, ALPACA_SECRET).then((r) => r.ok),
-    alpacaProxy(`${DATA_BASE}/v2/stocks/quotes/latest?symbols=SPY`, ALPACA_KEY, ALPACA_SECRET).then((r) => r.ok),
+    alpacaProxy(`${DATA_BASE}/v2/stocks/quotes/latest?symbols=SPY&feed=${STOCK_FEED}`, ALPACA_KEY, ALPACA_SECRET).then((r) => r.ok),
   ]);
   const connected = accountOk;
   let error = null;
@@ -32,11 +34,12 @@ app.get("/api/status", async (req, res) => {
 });
 
 // --- Market Data (real-time) ---
-// Latest stock quotes
+// Latest stock quotes (feed=iex works without subscription)
 app.get("/api/stocks/quotes/latest", async (req, res) => {
   const symbols = req.query.symbols || "SPY";
+  const feed = req.query.feed || STOCK_FEED;
   const result = await alpacaProxy(
-    `${DATA_BASE}/v2/stocks/quotes/latest?symbols=${encodeURIComponent(symbols)}`,
+    `${DATA_BASE}/v2/stocks/quotes/latest?symbols=${encodeURIComponent(symbols)}&feed=${feed}`,
     ALPACA_KEY,
     ALPACA_SECRET
   );
@@ -46,8 +49,9 @@ app.get("/api/stocks/quotes/latest", async (req, res) => {
 // Latest trade for a symbol
 app.get("/api/stocks/trades/latest", async (req, res) => {
   const symbol = req.query.symbol || "SPY";
+  const feed = req.query.feed || STOCK_FEED;
   const result = await alpacaProxy(
-    `${DATA_BASE}/v2/stocks/trades/latest?symbols=${encodeURIComponent(symbol)}`,
+    `${DATA_BASE}/v2/stocks/trades/latest?symbols=${encodeURIComponent(symbol)}&feed=${feed}`,
     ALPACA_KEY,
     ALPACA_SECRET
   );
@@ -55,10 +59,10 @@ app.get("/api/stocks/trades/latest", async (req, res) => {
 });
 
 // --- History API ---
-// Stock bars (OHLCV)
+// Stock bars (OHLCV). Default feed=iex (no subscription required).
 app.get("/api/stocks/bars", async (req, res) => {
-  const { symbols = "SPY", timeframe = "1Day", start, end, limit, page_token } = req.query;
-  const params = new URLSearchParams({ symbols, timeframe });
+  const { symbols = "SPY", timeframe = "1Day", start, end, limit, page_token, feed } = req.query;
+  const params = new URLSearchParams({ symbols, timeframe, feed: feed || STOCK_FEED });
   if (start) params.set("start", start);
   if (end) params.set("end", end);
   if (limit) params.set("limit", limit);
