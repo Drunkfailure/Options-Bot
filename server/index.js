@@ -9,10 +9,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const ALPACA_KEY = process.env.ALPACA_API_KEY_ID;
-const ALPACA_SECRET = process.env.ALPACA_SECRET_KEY;
-const DATA_BASE = (process.env.ALPACA_DATA_BASE_URL || "https://data.sandbox.alpaca.markets").replace(/\/$/, "");
-const TRADING_BASE = (process.env.ALPACA_TRADING_BASE_URL || "https://paper-api.alpaca.markets").replace(/\/$/, "");
+const ALPACA_KEY = (process.env.ALPACA_API_KEY_ID || "").trim();
+const ALPACA_SECRET = (process.env.ALPACA_SECRET_KEY || "").trim();
+const DATA_BASE = (process.env.ALPACA_DATA_BASE_URL || "https://data.sandbox.alpaca.markets").trim().replace(/\/$/, "");
+const TRADING_BASE = (process.env.ALPACA_TRADING_BASE_URL || "https://paper-api.alpaca.markets").trim().replace(/\/$/, "");
 // IEX is the only feed that works without a subscription (Alpaca docs)
 const STOCK_FEED = process.env.ALPACA_STOCK_FEED || "iex";
 
@@ -22,14 +22,18 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 
 // Connection status: check both Trading API (account) and Data API (market data)
 app.get("/api/status", async (req, res) => {
-  const [accountOk, dataOk] = await Promise.all([
-    alpacaTradingProxy(`${TRADING_BASE}/v2/account`, ALPACA_KEY, ALPACA_SECRET).then((r) => r.ok),
-    alpacaProxy(`${DATA_BASE}/v2/stocks/quotes/latest?symbols=SPY&feed=${STOCK_FEED}`, ALPACA_KEY, ALPACA_SECRET).then((r) => r.ok),
-  ]);
+  const accountResult = await alpacaTradingProxy(`${TRADING_BASE}/v2/account`, ALPACA_KEY, ALPACA_SECRET);
+  const dataResult = await alpacaProxy(`${DATA_BASE}/v2/stocks/quotes/latest?symbols=SPY&feed=${STOCK_FEED}`, ALPACA_KEY, ALPACA_SECRET);
+  const accountOk = accountResult.ok;
+  const dataOk = dataResult.ok;
   const connected = accountOk;
   let error = null;
-  if (!accountOk) error = "Check API keys and ALPACA_TRADING_BASE_URL (paper: paper-api.alpaca.markets).";
-  else if (!dataOk) error = "Account OK. Market data failed — try ALPACA_DATA_BASE_URL=https://data.alpaca.markets in .env.";
+  if (!accountOk) {
+    const detail = accountResult.body?.error || accountResult.body?.message;
+    error = detail ? `${detail}. Check .env: API keys and ALPACA_TRADING_BASE_URL (paper: https://paper-api.alpaca.markets).` : "Check API keys and ALPACA_TRADING_BASE_URL (paper: paper-api.alpaca.markets).";
+  } else if (!dataOk) {
+    error = "Account OK. Market data failed — try ALPACA_DATA_BASE_URL=https://data.alpaca.markets in .env.";
+  }
   res.json({ connected, dataOk, error });
 });
 
@@ -126,6 +130,27 @@ app.get("/api/options/snapshots/:underlying", async (req, res) => {
   const qs = params.toString();
   const url = `${DATA_BASE}/v1beta1/options/snapshots/${encodeURIComponent(underlying)}${qs ? `?${qs}` : ""}`;
   const result = await alpacaProxy(url, ALPACA_KEY, ALPACA_SECRET);
+  res.status(result.ok ? 200 : result.status).json(result.body);
+});
+
+// --- Options contracts (for backtest: list by underlying + expiration) ---
+app.get("/api/options/contracts", async (req, res) => {
+  const { underlying_symbols, expiration_date, expiration_date_gte, expiration_date_lte, type, status, limit = "200", page_token } = req.query;
+  const params = new URLSearchParams();
+  if (underlying_symbols) params.set("underlying_symbols", underlying_symbols);
+  if (expiration_date) params.set("expiration_date", expiration_date);
+  if (expiration_date_gte) params.set("expiration_date_gte", expiration_date_gte);
+  if (expiration_date_lte) params.set("expiration_date_lte", expiration_date_lte);
+  if (type) params.set("type", type);
+  if (status) params.set("status", status);
+  if (limit) params.set("limit", limit);
+  if (page_token) params.set("page_token", page_token);
+  const qs = params.toString();
+  const result = await alpacaTradingProxy(
+    `${TRADING_BASE}/v2/options/contracts${qs ? `?${qs}` : ""}`,
+    ALPACA_KEY,
+    ALPACA_SECRET
+  );
   res.status(result.ok ? 200 : result.status).json(result.body);
 });
 

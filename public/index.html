@@ -13,6 +13,10 @@
   <div class="app">
     <header class="topbar">
       <a href="#/" class="logo">Options Bot</a>
+      <nav class="topbar-nav">
+        <a href="#/" class="nav-link" id="navPortfolio">Portfolio</a>
+        <a href="#/bot-creator" class="nav-link" id="navBotCreator">Bot Creator</a>
+      </nav>
       <div class="search-wrap">
         <input type="text" id="searchInput" class="search-input" placeholder="Search ticker (e.g. SPY, AAPL)…" autocomplete="off" />
         <button type="button" id="searchBtn" class="search-btn" aria-label="Search">Go</button>
@@ -34,6 +38,11 @@
             </div>
             <div class="equity-chart-wrap">
               <h3 class="chart-title">Portfolio value</h3>
+              <div class="chart-zoom-toolbar" id="equityChartToolbar" aria-label="Chart zoom" style="display: none;">
+                <button type="button" id="equityChartZoomIn" title="Zoom in">Zoom in</button>
+                <button type="button" id="equityChartZoomOut" title="Zoom out">Zoom out</button>
+                <button type="button" id="equityChartZoomReset" title="Reset zoom">Reset</button>
+              </div>
               <div class="equity-chart" id="equityChart">
                 <p class="muted">Loading…</p>
               </div>
@@ -82,14 +91,28 @@
         <!-- Price chart first -->
         <section class="card ticker-chart-card">
           <h2>Price</h2>
-          <p class="muted">Historical bars (IEX). Choose timeframe and fetch to load.</p>
+          <p class="muted">Historical bars (IEX). Chart updates when you change the range or bar size.</p>
           <div class="form-row form-row-inline">
             <select id="tickerTimeframe">
-              <option value="1Day" selected>1 day</option>
-              <option value="1Week">1 week</option>
-              <option value="5Min">5 min</option>
+              <option value="today" selected>Today</option>
+              <option value="1w">1 Week</option>
+              <option value="1m">1 Month</option>
+              <option value="3m">3 Month</option>
+              <option value="ytd">YTD</option>
             </select>
-            <button type="button" id="tickerBarsRefresh">Update chart</button>
+            <span id="tickerTodayBarSizeWrap" class="today-bar-size-wrap">
+              <label for="tickerTodayBarSize">Bar</label>
+              <select id="tickerTodayBarSize">
+                <option value="1Min">1 min</option>
+                <option value="5Min" selected>5 min</option>
+                <option value="15Min">15 min</option>
+              </select>
+            </span>
+          </div>
+          <div class="chart-zoom-toolbar" id="tickerChartToolbar" aria-label="Chart zoom" style="display: none;">
+            <button type="button" id="tickerChartZoomIn" title="Zoom in">Zoom in</button>
+            <button type="button" id="tickerChartZoomOut" title="Zoom out">Zoom out</button>
+            <button type="button" id="tickerChartZoomReset" title="Reset zoom">Reset</button>
           </div>
           <div class="bars-chart-wrap ticker-chart-wrap" id="tickerBarsChartWrap">
             <p class="no-chart">Chart will appear after you click Update chart.</p>
@@ -107,7 +130,8 @@
         <!-- Options: Calls | Puts -->
         <section class="card options-card">
           <h2>Options</h2>
-          <p class="muted">Option chain. Refreshes for current underlying.</p>
+          <p class="muted">Option chain. Refreshes for current underlying. Requires <strong>OPRA agreement</strong> signed in your Alpaca account.</p>
+          <p class="muted small" id="optionsAccountStatus" aria-live="polite">Account: —</p>
           <div class="form-row form-row-inline">
             <button type="button" id="tickerOptRefresh">Refresh chain</button>
           </div>
@@ -127,6 +151,173 @@
           </div>
         </section>
       </div>
+
+      <!-- Bot Creator: ticker lookup, graphs, backtest, strategy feasibility -->
+      <div id="view-bot-creator" class="view hidden">
+        <div class="bot-creator-header">
+          <h1 class="page-title">Bot Creator</h1>
+          <p class="muted">Look up a ticker, view graphs, backtest, and check if a strategy is feasible.</p>
+        </div>
+
+        <section class="card">
+          <h2>Ticker</h2>
+          <p class="muted">Enter a symbol to load price data and charts for backtesting.</p>
+          <div class="form-row form-row-inline">
+            <input type="text" id="botTickerInput" placeholder="e.g. SPY, AAPL" value="SPY" />
+            <button type="button" id="botTickerLoad">Load</button>
+          </div>
+          <p class="muted small" id="botTickerStatus">Enter a ticker and click Load.</p>
+        </section>
+
+        <section class="card">
+          <h2>Price chart</h2>
+          <p class="muted">Historical bars (IEX). Same ranges as ticker lookup. Chart updates when you change the range or bar size.</p>
+          <div class="form-row form-row-inline">
+            <select id="botChartRange">
+              <option value="today">Today</option>
+              <option value="1w">1 Week</option>
+              <option value="1m" selected>1 Month</option>
+              <option value="3m">3 Month</option>
+              <option value="ytd">YTD</option>
+            </select>
+            <span id="botTodayBarSizeWrap" class="today-bar-size-wrap">
+              <label for="botTodayBarSize">Bar</label>
+              <select id="botTodayBarSize">
+                <option value="1Min">1 min</option>
+                <option value="5Min" selected>5 min</option>
+                <option value="15Min">15 min</option>
+              </select>
+            </span>
+          </div>
+          <div class="chart-zoom-toolbar" id="botChartToolbar" aria-label="Chart zoom" style="display: none;">
+            <button type="button" id="botChartZoomIn" title="Zoom in">Zoom in</button>
+            <button type="button" id="botChartZoomOut" title="Zoom out">Zoom out</button>
+            <button type="button" id="botChartZoomReset" title="Reset zoom">Reset</button>
+          </div>
+          <div class="bars-chart-wrap ticker-chart-wrap" id="botChartWrap">
+            <p class="no-chart">Load a ticker to see the chart.</p>
+          </div>
+        </section>
+
+        <section class="card indicators-card">
+          <h2>Indicators</h2>
+          <p class="muted">Enable indicators for strategy and backtest. Values update when ticker data is loaded.</p>
+          <div class="indicators-grid">
+            <div class="indicators-group">
+              <h3 class="indicators-group-title">SMA / EMA</h3>
+              <label class="indicator-check"><input type="checkbox" id="indPriceOverEma50" /> Price / 50 EMA</label>
+              <label class="indicator-check"><input type="checkbox" id="indPriceOverEma200" /> Price / 200 EMA</label>
+              <label class="indicator-check"><input type="checkbox" id="indEma20MinusEma50" /> EMA20 − EMA50</label>
+              <label class="indicator-check"><input type="checkbox" id="indEmaSlope" /> EMA slope</label>
+            </div>
+            <div class="indicators-group">
+              <h3 class="indicators-group-title">RSI</h3>
+              <label class="indicator-check"><input type="checkbox" id="indRsi" /> RSI</label>
+              <label class="indicator-check"><input type="checkbox" id="indRsiSlope" /> RSI slope</label>
+              <label class="indicator-check"><input type="checkbox" id="indRsiDivergence" /> RSI divergence</label>
+              <label class="indicator-check"><input type="checkbox" id="indRsiDistanceFrom50" /> RSI distance from 50</label>
+            </div>
+            <div class="indicators-group">
+              <h3 class="indicators-group-title">MACD &amp; Bands</h3>
+              <label class="indicator-check"><input type="checkbox" id="indMacdLine" /> MACD line</label>
+              <label class="indicator-check"><input type="checkbox" id="indBollinger" /> Bollinger bands</label>
+            </div>
+            <div class="indicators-group">
+              <h3 class="indicators-group-title">VWAP</h3>
+              <label class="indicator-check"><input type="checkbox" id="indVwap" /> VWAP</label>
+            </div>
+          </div>
+          <div class="output indicator-values-wrap" id="botIndicatorValues">
+            <p class="muted">Load a ticker to see indicator values.</p>
+          </div>
+        </section>
+
+        <section class="card signals-card">
+          <h2>Indicator signals</h2>
+          <p class="muted">Derived signals from indicators. Used by strategies and backtests.</p>
+          <div class="signals-output" id="botSignalsOutput">
+            <p class="muted">Load a ticker to see signals.</p>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Backtest</h2>
+          <p class="muted">Choose indicators to combine (entry when all selected are bullish; exit when any flips bearish). Pick timeframe, budget, and date range. Trades the underlying stock.</p>
+          <div class="form-grid">
+            <div class="field">
+              <label for="botBacktestStart">Start date</label>
+              <input type="date" id="botBacktestStart" />
+            </div>
+            <div class="field">
+              <label for="botBacktestEnd">End date</label>
+              <input type="date" id="botBacktestEnd" />
+            </div>
+            <div class="field">
+              <label for="botBacktestTimeframe">Timeframe</label>
+              <select id="botBacktestTimeframe">
+                <option value="1Min">1 min</option>
+                <option value="5Min">5 min</option>
+                <option value="15Min">15 min</option>
+                <option value="30Min">30 min</option>
+                <option value="1Hour">1 hour</option>
+                <option value="1Day" selected>1 day</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="botBacktestDirection">Direction</label>
+              <select id="botBacktestDirection">
+                <option value="bullish" selected>Bullish (calls / long)</option>
+                <option value="bearish">Bearish (puts / short)</option>
+                <option value="both">Both (calls + puts)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="botBacktestBudget">Budget ($)</label>
+              <input type="number" id="botBacktestBudget" min="100" step="100" value="10000" placeholder="10000" />
+            </div>
+            <div class="field">
+              <label for="botBacktestTakeProfit">Take profit (%)</label>
+              <input type="number" id="botBacktestTakeProfit" min="0" step="0.5" placeholder="e.g. 10" title="Exit when position is up this % (leave empty to disable)" />
+            </div>
+            <div class="field">
+              <label for="botBacktestStopLoss">Stop loss (%)</label>
+              <input type="number" id="botBacktestStopLoss" min="0" step="0.5" placeholder="e.g. 5" title="Exit when position is down this % (leave empty to disable)" />
+            </div>
+          </div>
+          <div class="field backtest-options-toggle">
+            <label class="checkbox-label">
+              <input type="checkbox" id="botBacktestExitOnSignal" checked />
+              Exit on signal flip (uncheck to hold until take profit or stop loss only)
+            </label>
+          </div>
+          <div class="field backtest-options-toggle">
+            <label class="checkbox-label">
+              <input type="checkbox" id="botBacktestUseOptions" />
+              Use historical options (options history + contract selection for most probable profitable choice). Requires OPRA agreement signed in Alpaca.
+            </label>
+          </div>
+          <p class="muted small">Indicators to combine: use the checkboxes in the <strong>Indicators</strong> section above. Bullish: enter when all bullish (buy calls/long); exit when any bearish (or only on TP/SL if “Exit on signal flip” is off). Bearish: enter when all bearish (buy puts/short); exit when any bullish (or only on TP/SL). Both: trade both directions.</p>
+          <div class="form-row form-row-inline">
+            <button type="button" id="botBacktestRun">Run backtest</button>
+          </div>
+          <div class="output" id="botBacktestOutput">
+            <p class="muted">Load a ticker, select indicators, set dates and budget, then Run backtest.</p>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Strategy feasibility</h2>
+          <p class="muted">Enter strategy parameters to see if it’s possible given data and constraints.</p>
+          <div class="form-row form-row-inline">
+            <button type="button" id="botFeasibilityCheck" disabled>Check feasibility</button>
+          </div>
+          <div class="output" id="botFeasibilityOutput">
+            <p class="muted">Feasibility checker coming soon.</p>
+          </div>
+        </section>
+      </div>
     </main>
 
     <footer class="footer">
@@ -134,6 +325,10 @@
     </footer>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <script src="/js/indicators.js"></script>
+  <script src="/js/contractCriteria.js"></script>
+  <script src="/js/optionsBacktest.js"></script>
   <script src="/js/app.js" type="module"></script>
 </body>
 </html>
